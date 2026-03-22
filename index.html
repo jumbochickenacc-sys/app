@@ -5702,12 +5702,12 @@ function doShake(){var c=document.getElementById("loginCard");c.classList.remove
 function loadApp(){
   // API key check — handled by Supabase Auth now
   var today=new Date();
-  var cdEl=document.getElementById("currentDate"); if(cdEl) cdEl.textContent=today.toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
+  var _cd=document.getElementById("currentDate");if(_cd)_cd.textContent=today.toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
   var td=today.toISOString().split("T")[0];selectedAttDate=td;
-  if(typeof dpSetValue==='function') try{dpSetValue("att-date-picker",td);}catch(e){}
-  var adl=document.getElementById("att-date-label"); if(adl) adl.textContent=today.toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  dpSetValue("att-date-picker",td);
+  document.getElementById("att-date-label").textContent=today.toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   var heroDateEl = document.getElementById("dash-hero-date"); if (heroDateEl) heroDateEl.textContent=today.toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"});
-  if(typeof dpSetValue==='function') try{dpSetValue("f-payDate",td);dpSetValue("f-expDate",td);}catch(e){}
+  dpSetValue("f-payDate",td);dpSetValue("f-expDate",td);
   Promise.all([sb("employees","GET",null,"?order=name"),sb("attendance","GET",null,"?date=eq."+td),sb("payments","GET",null,"?order=created_at.desc&limit=100"),sb("payments","GET",null,"?pay_date=eq.1970-01-01&type=eq.OPENING")]).then(function(results){
     employees=results[0]||[];var attData=results[1]||[];payments=results[2]||[];var obData=results[3]||[];
     attStatus={};attData.forEach(function(a){attStatus[a.emp_id]=a.status;});
@@ -12428,7 +12428,7 @@ setTimeout(function(){pushN('\ud83d\udcb8 Overdue Payment','Malabar Chicken owes
 // ── Hook into existing loadApp ──────────────────────────────
 var _origLoadApp = typeof loadApp === 'function' ? loadApp : null;
 loadApp = function() {
-  if (_origLoadApp) try { _origLoadApp(); } catch(e) { console.warn('loadApp error:', e); }
+  if (_origLoadApp) _origLoadApp();
   // Restore theme on app load
   var savedTheme = localStorage.getItem('henpec_theme') || 'dark';
   setTheme(savedTheme);
@@ -12439,17 +12439,17 @@ loadApp = function() {
     if (typeof pushN === 'function')
       pushN('✔ System ready', 'All features active. Tap ✦ for AI.', '&#128994;', 'bg-grn');
   }, 1000);
-};
+}
 
 // ── Wire v4 dashboard build into existing renderAdvDashboard ──
 var _origRenderAdv = typeof renderAdvDashboard === 'function' ? renderAdvDashboard : null;
 renderAdvDashboard = function() {
-  if (_origRenderAdv) try { _origRenderAdv(); } catch(e) { console.warn('renderAdv error:', e); }
+  if (_origRenderAdv) _origRenderAdv();
   // After original runs, also call v4 build to update hero sections
   setTimeout(function() {
     try { build(); } catch(e) { console.warn('v4 build error:', e); }
   }, 200);
-};
+}
 
 </script>
 
