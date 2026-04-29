@@ -6834,44 +6834,37 @@ function saveEmployee(){
   }
   function resetForm(){["f-empId","f-empName","f-empEmail","f-empPhone","f-empWage","f-empRoleCustom","f-empDeptCustom","f-empPw"].forEach(function(f){document.getElementById(f).value="";});dpSetValue("f-empJoin","");document.getElementById("f-empPhoto").value="";document.getElementById("photo-preview").style.display="none";document.getElementById("photo-placeholder").style.display="block";document.getElementById("f-empRole").value="";document.getElementById("f-empDept").value="";document.getElementById("f-empCL").value="12";document.getElementById("f-empSL").value="6";setPayBasis("DAILY");["phone-hint","email-hint","wage-hint"].forEach(function(id){document.getElementById(id).style.display="none";});document.getElementById("empId-regen-btn").style.display="";document.getElementById("f-empMode").value="add";document.getElementById("empModal-title").innerHTML="Add <span>Employee</span>";document.getElementById("empModal-save-btn").textContent="Save Employee";}
   if(mode==="edit"){
-    var updates={name:emp.name,role:emp.role,email:emp.email||"",phone:emp.phone||"",wage:emp.wage,dept:emp.dept||"",join_date:emp.join_date||null,cl_quota:emp.cl_quota,sl_quota:emp.sl_quota,password:emp.password};
-    if(emp.photo)updates.photo=emp.photo;
-    updates.pay_basis=emp.pay_basis||"DAILY";
+    // Only update safe columns that exist in DB
+    var updates={name:emp.name, role:emp.role, email:emp.email||"", phone:emp.phone||"", wage:emp.wage, password:emp.password, pay_basis:emp.pay_basis||"DAILY"};
+    if(emp.photo) updates.photo=emp.photo;
+    if(emp.dept) updates.dept=emp.dept;
+    if(emp.join_date) updates.join_date=emp.join_date;
     sb("employees","PATCH",updates,"?id=eq."+emp.id).then(function(r){
-      if(r!==null&&r!==false){for(var i=0;i<employees.length;i++){if(employees[i].id===emp.id){employees[i]=Object.assign({},employees[i],updates,{id:emp.id});break;}}closeModal("empModal");renderEmployees();renderDashboard();resetForm();addAuditLog("✏️","Employee Updated","Updated "+emp.name,"var(--accent)");showToast("✓ "+emp.name+" updated!");}
-      else{var u2=Object.assign({},updates);delete u2.pay_basis;sb("employees","PATCH",u2,"?id=eq."+emp.id).then(function(r2){if(r2!==null&&r2!==false){u2.pay_basis=emp.pay_basis;for(var i=0;i<employees.length;i++){if(employees[i].id===emp.id){employees[i]=Object.assign({},employees[i],u2,{id:emp.id});break;}}closeModal("empModal");renderEmployees();renderDashboard();resetForm();showToast("✓ Updated (add pay_basis column to Supabase)");}else showToast("Update failed: "+(window._sbLastError||"unknown"),true);});}
-    });
-  } else {
-    // Build send object - let DB generate uuid, use emp fields
-    var sendObj = {
-      name: emp.name,
-      role: emp.role || 'Staff',
-      phone: emp.phone || null,
-      wage: emp.wage || 0,
-      email: emp.email || null,
-      pay_basis: emp.pay_basis || 'DAILY',
-      dept: emp.dept || null,
-      join_date: emp.join_date || null,
-      password: emp.password || 'emp123',
-      photo: emp.photo || null,
-      cl_quota: emp.cl_quota || 12,
-      sl_quota: emp.sl_quota || 6,
-      shop_id: currentShop ? currentShop.id : null
-    };
-    sb("employees","POST",sendObj).then(function(res){
-      if(res&&res[0]){
-        employees.push(res[0]);
-        closeModal("empModal");renderEmployees();renderDashboard();
-        addAuditLog("➕","Employee Added","Added "+emp.name,"var(--green)");
-        showToast("✓ "+emp.name+" added!");resetForm();
+      if(r!==null&&r!==false){
+        for(var i=0;i<employees.length;i++){if(employees[i].id===emp.id){employees[i]=Object.assign({},employees[i],updates,{id:emp.id});break;}}
+        closeModal("empModal");renderEmployees();renderDashboard();resetForm();
+        addAuditLog("✏️","Employee Updated","Updated "+emp.name,"var(--accent)");
+        showToast("✓ "+emp.name+" updated!");
       } else {
-        // Retry with minimum columns only
-        var minObj={name:emp.name,role:emp.role||'Staff',phone:emp.phone||null,wage:emp.wage||0,shop_id:currentShop?currentShop.id:null};
-        sb("employees","POST",minObj).then(function(r2){
-          if(r2&&r2[0]){employees.push(r2[0]);closeModal("empModal");renderEmployees();renderDashboard();showToast("✓ "+emp.name+" added!");resetForm();}
-          else showToast("Save failed: "+(window._sbLastError||"Check Supabase table setup"),true);
+        // Retry with minimal fields
+        var u2={name:emp.name,role:emp.role,wage:emp.wage};
+        if(emp.photo) u2.photo=emp.photo;
+        sb("employees","PATCH",u2,"?id=eq."+emp.id).then(function(r2){
+          if(r2!==null&&r2!==false){
+            for(var i=0;i<employees.length;i++){if(employees[i].id===emp.id){employees[i]=Object.assign({},employees[i],u2);break;}}
+            closeModal("empModal");renderEmployees();renderDashboard();resetForm();
+            showToast("✓ "+emp.name+" updated!");
+          } else showToast("Update failed: "+(window._sbLastError||"unknown"),true);
         });
       }
+    });
+  } else {
+    var sendObj={name:emp.name,role:emp.role||"Staff",phone:emp.phone||null,wage:emp.wage||0,email:emp.email||null,pay_basis:emp.pay_basis||"DAILY",password:emp.password||"emp123",photo:emp.photo||null,shop_id:currentShop?currentShop.id:null};
+    if(emp.dept) sendObj.dept=emp.dept;
+    if(emp.join_date) sendObj.join_date=emp.join_date;
+    sb("employees","POST",sendObj).then(function(res){
+      if(res&&res[0]){employees.push(res[0]);closeModal("empModal");renderEmployees();renderDashboard();addAuditLog("➕","Employee Added","Added "+emp.name,"var(--green)");showToast("✓ "+emp.name+" added!");resetForm();}
+      else{var min={name:emp.name,role:emp.role||"Staff",phone:emp.phone||null,wage:emp.wage||0,shop_id:currentShop?currentShop.id:null};sb("employees","POST",min).then(function(r2){if(r2&&r2[0]){employees.push(r2[0]);closeModal("empModal");renderEmployees();renderDashboard();showToast("✓ "+emp.name+" added!");resetForm();}else showToast("Save failed: "+(window._sbLastError||"Check Supabase"),true);});}
     });
   }
 }
