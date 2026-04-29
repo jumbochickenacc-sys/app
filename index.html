@@ -6870,7 +6870,10 @@ function saveEmployee(){
     if(empPhoto) updates.photo = empPhoto;
     if(dept)     updates.dept = dept;
     if(empJoin)  updates.join_date = empJoin;
+    console.log("PATCH empDbId:", empDbId, "updates:", JSON.stringify(updates));
+    showToast("Saving...");
     sb("employees","PATCH",updates,"?id=eq."+empDbId).then(function(r){
+      console.log("PATCH result:", r, "sbLastError:", window._sbLastError);
       if(r!==null&&r!==false){
         for(var i=0;i<employees.length;i++){if(employees[i].id===empDbId){employees[i]=Object.assign({},employees[i],updates);break;}}
         closeModal("empModal"); renderEmployees(); renderDashboard(); resetForm();
