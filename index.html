@@ -6725,6 +6725,9 @@ function filterEmployees(val){
   renderEmployees();
 }
 function clearEmpSearch(){document.getElementById("emp-search").value="";empSearchFilter="";document.getElementById("emp-search-clear").style.display="none";renderEmployees();}
+function getEmpExtras(emp){
+  try{ return JSON.parse(localStorage.getItem('emp_extra_'+emp.id)||'{}'); }catch(e){ return {}; }
+}
 function renderEmployees(){
   var el=document.getElementById("emp-list");var h="";var filtered=employees;
   if(empSearchFilter){filtered=employees.filter(function(e){return(e.name||"").toLowerCase().indexOf(empSearchFilter)>=0||(e.role||"").toLowerCase().indexOf(empSearchFilter)>=0||(e.id||"").toLowerCase().indexOf(empSearchFilter)>=0||(e.dept||"").toLowerCase().indexOf(empSearchFilter)>=0;});}
@@ -6866,25 +6869,45 @@ function saveEmployee(){
 
   if(mode==="edit"){
     // Update — only safe columns, no cl_quota/sl_quota
-    var updates = {name:empName, role:role, email:empEmail||null, phone:phone||null, wage:empWage, pay_basis:empPay, password:empPw, emp_code:emp.emp_code||null};
-    if(empPhoto)  updates.photo    = empPhoto;
-    if(dept)      updates.dept     = dept;
-    if(empJoin)   updates.join_date= empJoin;
+    // Only send columns guaranteed to be in schema cache
+    // Save dept/join_date to localStorage (schema cache workaround)
+    var empLocalKey = 'emp_extra_'+empDbId;
+    var empExtras = JSON.parse(localStorage.getItem(empLocalKey)||'{}');
+    if(dept)    empExtras.dept     = dept;
+    if(empJoin) empExtras.join_date= empJoin;
+    localStorage.setItem(empLocalKey, JSON.stringify(empExtras));
+
+    var updates = {name:empName, role:role, email:empEmail||null, phone:phone||null, wage:empWage, pay_basis:empPay, password:empPw};
+    if(empPhoto) updates.photo = empPhoto;
+
     sb("employees","PATCH",updates,"?id=eq."+empDbId).then(function(r){
       if(r!==null&&r!==false){
-        for(var i=0;i<employees.length;i++){if(employees[i].id===empDbId){employees[i]=Object.assign({},employees[i],updates);break;}}
+        // Merge localStorage extras into local employee object for display
+        for(var i=0;i<employees.length;i++){
+          if(employees[i].id===empDbId){
+            Object.assign(employees[i], updates, empExtras);
+            break;
+          }
+        }
         closeModal("empModal"); renderEmployees(); renderDashboard(); resetForm();
         addAuditLog("✏️","Employee Updated","Updated "+empName,"var(--accent)");
         showToast("✓ "+empName+" updated!");
+
+        // Try to also save dept to DB in background (will work once schema cache refreshes)
+        if(dept || empJoin){
+          var bg = {};
+          if(dept) bg.dept = dept;
+          if(empJoin) bg.join_date = empJoin;
+          sb("employees","PATCH",bg,"?id=eq."+empDbId).catch(function(){});
+        }
       } else {
-        // Minimal fallback
         var u2={name:empName, role:role, wage:empWage};
         if(empPhoto) u2.photo=empPhoto;
         sb("employees","PATCH",u2,"?id=eq."+empDbId).then(function(r2){
           if(r2!==null&&r2!==false){
-            for(var i=0;i<employees.length;i++){if(employees[i].id===empId){employees[i]=Object.assign({},employees[i],u2);break;}}
+            for(var i=0;i<employees.length;i++){if(employees[i].id===empDbId){Object.assign(employees[i],u2,empExtras);break;}}
             closeModal("empModal"); renderEmployees(); renderDashboard(); resetForm();
-            showToast("✓ "+empName+" updated!");
+            showToast("✓ "+empName+" updated! (dept saved locally)");
           } else showToast("Update failed: "+(window._sbLastError||"unknown"),true);
         });
       }
@@ -8108,7 +8131,8 @@ function initIncrementPanel(){
 }
 function showCurrentWage(){
   var empId=document.getElementById("increment-emp").value;
-  var emp=employees.find(function(e){return e.id===empId;});if(!emp)return;
+  var emp=employees.find(function(e){return e.id===empId;});if(!emp){ showToast("Employee not found",true); return; }
+  emp = Object.assign({}, emp, getEmpExtras(emp));
   var wrap=document.getElementById("increment-current-wage");var disp=document.getElementById("increment-wage-display");
   if(wrap)wrap.style.display="block";
   if(disp)disp.textContent="₹"+emp.wage.toLocaleString("en-IN")+(emp.pay_basis==="MONTHLY"?"/month":"/day");
