@@ -6778,10 +6778,17 @@ function generateEmpId(){
   document.getElementById("f-empId").value = "EMP-" + String(next).padStart(3,"0");
 }
 function openEditEmp(empId){
-  var emp=employees.find(function(e){return e.id===empId;});if(!emp)return;
-  document.getElementById("f-empMode").value="edit";document.getElementById("empModal-title").innerHTML="Edit <span>Employee</span>";
-  document.getElementById("empModal-save-btn").textContent="💾 Update Employee";document.getElementById("empId-regen-btn").style.display="none";
-  document.getElementById("f-empId").value=emp.emp_code||("EMP-"+String(employees.indexOf(emp)+1).padStart(3,"0"));document.getElementById("f-empDbId").value=emp.id;document.getElementById("f-empName").value=emp.name||"";
+  var emp=employees.find(function(e){return e.id===empId;});
+  if(!emp){ showToast("Employee not found",true); return; }
+  document.getElementById("f-empMode").value="edit";
+  document.getElementById("empModal-title").innerHTML="Edit <span>Employee</span>";
+  document.getElementById("empModal-save-btn").textContent="💾 Update Employee";
+  document.getElementById("empId-regen-btn").style.display="none";
+  // Show simple code, store real uuid in hidden field
+  document.getElementById("f-empId").value = emp.emp_code||("EMP-"+String(employees.indexOf(emp)+1).padStart(3,"0"));
+  var dbIdEl = document.getElementById("f-empDbId");
+  if(dbIdEl) dbIdEl.value = emp.id;
+  document.getElementById("f-empName").value=emp.name||"";
   document.getElementById("f-empEmail").value=emp.email||"";document.getElementById("f-empPhone").value=emp.phone||"";
   document.getElementById("f-empWage").value=emp.wage||"";dpSetValue("f-empJoin",emp.join_date||"");
   setPayBasis(emp.pay_basis||"DAILY");document.getElementById("f-empCL").value=emp.cl_quota||12;document.getElementById("f-empSL").value=emp.sl_quota||6;
@@ -6824,7 +6831,8 @@ function saveEmployee(){
   var empPw    = document.getElementById("f-empPw").value.trim() || "emp123";
   var empPhoto = document.getElementById("f-empPhoto").value || null;
   var empId    = document.getElementById("f-empId").value.trim();
-  var empDbId  = (document.getElementById("f-empDbId")||{value:""}).value.trim() || empId;
+  var _dbEl = document.getElementById("f-empDbId");
+  var empDbId = (_dbEl && _dbEl.value.trim()) ? _dbEl.value.trim() : empId;
 
   if(!empName)            return showToast("Enter employee name", true);
   if(!empWage||empWage<=0) return showToast("Enter a valid wage", true);
