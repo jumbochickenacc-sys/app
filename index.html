@@ -6840,9 +6840,11 @@ function saveEmployee(){
       else{var u2=Object.assign({},updates);delete u2.pay_basis;sb("employees","PATCH",u2,"?id=eq."+emp.id).then(function(r2){if(r2!==null&&r2!==false){u2.pay_basis=emp.pay_basis;for(var i=0;i<employees.length;i++){if(employees[i].id===emp.id){employees[i]=Object.assign({},employees[i],u2,{id:emp.id});break;}}closeModal("empModal");renderEmployees();renderDashboard();resetForm();showToast("✓ Updated (add pay_basis column to Supabase)");}else showToast("Update failed: "+(window._sbLastError||"unknown"),true);});}
     });
   } else {
-    sb("employees","POST",emp).then(function(res){
-      if(res&&res[0]){employees.push(res[0]);closeModal("empModal");renderEmployees();renderDashboard();addAuditLog("➕","Employee Added","Added "+emp.name+" ("+emp.id+")","var(--green)");showToast("✓ "+emp.name+" added!");resetForm();}
-      else{var empSafe=Object.assign({},emp);delete empSafe.pay_basis;sb("employees","POST",empSafe).then(function(res2){if(res2&&res2[0]){employees.push(Object.assign({},res2[0],{pay_basis:emp.pay_basis}));closeModal("empModal");renderEmployees();renderDashboard();showToast("✓ Added! (add pay_basis column for full support)");resetForm();}else showToast("Save failed: "+(window._sbLastError||"check console"),true);});}
+    // Send only guaranteed columns first, then retry with extras if needed
+    var empMin = {id:emp.id, name:emp.name, role:emp.role||"Staff", phone:emp.phone||null, wage:emp.wage, shop_id:emp.shop_id||null, email:emp.email||null, pay_basis:emp.pay_basis||"DAILY", dept:emp.dept||null, join_date:emp.join_date||null, password:emp.password||"emp123", photo:emp.photo||null, address:emp.address||null};
+    sb("employees","POST",empMin).then(function(res){
+      if(res&&res[0]){employees.push(res[0]);closeModal("empModal");renderEmployees();renderDashboard();addAuditLog("➕","Employee Added","Added "+emp.name,"var(--green)");showToast("✓ "+emp.name+" added!");resetForm();}
+      else showToast("Save failed: "+(window._sbLastError||"unknown error — check Supabase SQL Editor"),true);
     });
   }
 }
