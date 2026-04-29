@@ -6836,7 +6836,7 @@ function saveEmployee(){
   var roleSelect=document.getElementById("f-empRole").value;var role=roleSelect==="__custom__"?document.getElementById("f-empRoleCustom").value.trim():roleSelect;
   var deptSelect=document.getElementById("f-empDept").value;var dept=deptSelect==="__custom__"?document.getElementById("f-empDeptCustom").value.trim():deptSelect;
   var phone=document.getElementById("f-empPhone").value.trim();
-  var emp={id:document.getElementById("f-empId").value.trim(),name:document.getElementById("f-empName").value.trim(),role:role,email:document.getElementById("f-empEmail").value.trim(),phone:phone,wage:parseInt(document.getElementById("f-empWage").value)||0,pay_basis:document.getElementById("f-empPayBasis").value||"DAILY",dept:dept,join_date:document.getElementById("f-empJoin").value,cl_quota:parseInt(document.getElementById("f-empCL").value)||12,sl_quota:parseInt(document.getElementById("f-empSL").value)||6,password:document.getElementById("f-empPw").value.trim()||"emp123",photo:document.getElementById("f-empPhoto").value||null};
+  var emp={id:document.getElementById("f-empId").value.trim(),shop_id:currentShop?currentShop.id:null,name:document.getElementById("f-empName").value.trim(),role:role,email:document.getElementById("f-empEmail").value.trim(),phone:phone,wage:parseInt(document.getElementById("f-empWage").value)||0,pay_basis:document.getElementById("f-empPayBasis").value||"DAILY",dept:dept,join_date:document.getElementById("f-empJoin").value||null,cl_quota:parseInt(document.getElementById("f-empCL").value)||12,sl_quota:parseInt(document.getElementById("f-empSL").value)||6,password:document.getElementById("f-empPw").value.trim()||"emp123",photo:document.getElementById("f-empPhoto").value||null};
   if(!emp.id||!emp.name||!emp.wage){showToast("Fill ID, Name & Wage",true);return;}
   if(emp.wage<=0){showToast("Wage must be > 0",true);return;}
   if(!emp.role){showToast("Select a role",true);return;}
@@ -6858,7 +6858,7 @@ function saveEmployee(){
   } else {
     sb("employees","POST",emp).then(function(res){
       if(res&&res[0]){employees.push(res[0]);closeModal("empModal");renderEmployees();renderDashboard();addAuditLog("➕","Employee Added","Added "+emp.name+" ("+emp.id+")","var(--green)");showToast("✓ "+emp.name+" added!");resetForm();}
-      else{var empSafe=Object.assign({},emp);delete empSafe.pay_basis;sb("employees","POST",empSafe).then(function(res2){if(res2&&res2[0]){employees.push(Object.assign({},res2[0],{pay_basis:emp.pay_basis}));closeModal("empModal");renderEmployees();renderDashboard();showToast("✓ Added! (add pay_basis column for full support)");resetForm();}else showToast("Failed — check ID is unique",true);});}
+      else{var empSafe=Object.assign({},emp);delete empSafe.pay_basis;sb("employees","POST",empSafe).then(function(res2){if(res2&&res2[0]){employees.push(Object.assign({},res2[0],{pay_basis:emp.pay_basis}));closeModal("empModal");renderEmployees();renderDashboard();showToast("✓ Added! (add pay_basis column for full support)");resetForm();}else{showToast("Save failed: "+(window._sbLastError||"check console"),true);}};}
     });
   }
 }
