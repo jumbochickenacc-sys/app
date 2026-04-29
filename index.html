@@ -6842,17 +6842,36 @@ function saveEmployee(){
       else{var u2=Object.assign({},updates);delete u2.pay_basis;sb("employees","PATCH",u2,"?id=eq."+emp.id).then(function(r2){if(r2!==null&&r2!==false){u2.pay_basis=emp.pay_basis;for(var i=0;i<employees.length;i++){if(employees[i].id===emp.id){employees[i]=Object.assign({},employees[i],u2,{id:emp.id});break;}}closeModal("empModal");renderEmployees();renderDashboard();resetForm();showToast("✓ Updated (add pay_basis column to Supabase)");}else showToast("Update failed: "+(window._sbLastError||"unknown"),true);});}
     });
   } else {
-    // Send ONLY the 5 core columns — guaranteed to exist in any table setup
-    var safe={id:emp.id, name:emp.name, role:emp.role||"Staff", phone:emp.phone||null, wage:emp.wage||0};
-    // Try with extra columns first, fall back to core only
-    var full=Object.assign({},safe,{email:emp.email||null,pay_basis:emp.pay_basis||"DAILY",dept:emp.dept||null,join_date:emp.join_date||null,password:emp.password||"emp123",photo:emp.photo||null,cl_quota:emp.cl_quota||12,sl_quota:emp.sl_quota||6,shop_id:currentShop?currentShop.id:null,address:null});
-    sb("employees","POST",full).then(function(res){
-      if(res&&res[0]){employees.push(res[0]);closeModal("empModal");renderEmployees();renderDashboard();addAuditLog("➕","Employee Added","Added "+emp.name,"var(--green)");showToast("✓ "+emp.name+" added!");resetForm();return;}
-      // Try without optional columns
-      sb("employees","POST",safe).then(function(res2){
-        if(res2&&res2[0]){employees.push(res2[0]);closeModal("empModal");renderEmployees();renderDashboard();showToast("✓ "+emp.name+" added!");resetForm();}
-        else showToast("Save failed: "+(window._sbLastError||"Run SQL in Supabase"),true);
-      });
+    // Build send object - let DB generate uuid, use emp fields
+    var sendObj = {
+      name: emp.name,
+      role: emp.role || 'Staff',
+      phone: emp.phone || null,
+      wage: emp.wage || 0,
+      email: emp.email || null,
+      pay_basis: emp.pay_basis || 'DAILY',
+      dept: emp.dept || null,
+      join_date: emp.join_date || null,
+      password: emp.password || 'emp123',
+      photo: emp.photo || null,
+      cl_quota: emp.cl_quota || 12,
+      sl_quota: emp.sl_quota || 6,
+      shop_id: currentShop ? currentShop.id : null
+    };
+    sb("employees","POST",sendObj).then(function(res){
+      if(res&&res[0]){
+        employees.push(res[0]);
+        closeModal("empModal");renderEmployees();renderDashboard();
+        addAuditLog("➕","Employee Added","Added "+emp.name,"var(--green)");
+        showToast("✓ "+emp.name+" added!");resetForm();
+      } else {
+        // Retry with minimum columns only
+        var minObj={name:emp.name,role:emp.role||'Staff',phone:emp.phone||null,wage:emp.wage||0,shop_id:currentShop?currentShop.id:null};
+        sb("employees","POST",minObj).then(function(r2){
+          if(r2&&r2[0]){employees.push(r2[0]);closeModal("empModal");renderEmployees();renderDashboard();showToast("✓ "+emp.name+" added!");resetForm();}
+          else showToast("Save failed: "+(window._sbLastError||"Check Supabase table setup"),true);
+        });
+      }
     });
   }
 }
