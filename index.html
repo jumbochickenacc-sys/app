@@ -6056,8 +6056,10 @@ async function doLogin() {
   if (_loginFails >= _maxFails) { triggerLockout(); return; }
 
   var errEl = document.getElementById("loginErr");
-  function setErr(msg){ errEl.textContent=msg; errEl.style.color="var(--red)"; }
-  function setOk(msg) { errEl.textContent=msg; errEl.style.color="var(--green)"; }
+  function setErr(msg){ if(errEl){errEl.textContent=msg; errEl.style.color="var(--red,#ff5252)"; errEl.style.display="block";} }
+  function setOk(msg) { if(errEl){errEl.textContent=msg; errEl.style.color="var(--green,#22c55e)"; errEl.style.display="block";} }
+
+  setOk("⏳ Checking...");
 
   // Employee login — lookup by phone number (works on any device, no auth needed)
   if (loginRoleSelected === "employee") {
@@ -6142,20 +6144,25 @@ async function doLogin() {
   }
 
   // Admin login — using raw fetch (works on iOS Safari + WhatsApp)
+  // Force admin role if nothing selected
+  if (!loginRoleSelected || loginRoleSelected === "") loginRoleSelected = "admin";
+
   var emailEl = document.getElementById("loginEmail");
   var pwEl    = document.getElementById("pwField");
   var email   = emailEl ? emailEl.value.trim().toLowerCase() : "";
   var pw      = pwEl ? pwEl.value : "";
 
-  if (!email) return setErr("Enter your email address.");
-  if (!pw)    return setErr("Enter your password.");
+  if (!email) return setErr("⚠ Please enter your email address.");
+  if (!pw)    return setErr("⚠ Please enter your password.");
 
   var btn = document.getElementById("loginBtn");
   if (btn) { btn.disabled = true; btn.textContent = "Signing in..."; }
   setOk("Verifying...");
 
   try {
+    setOk("⏳ Connecting to server...");
     var authResp = await sbSignIn(email, pw);
+    console.log("Auth response:", JSON.stringify(authResp));
 
     if (authResp.error) {
       _loginFails++;
