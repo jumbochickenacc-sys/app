@@ -3257,7 +3257,7 @@ td{border-color:var(--bdr)!important;color:var(--t1)!important;}
     <div class="form-group" id="empId-group">
       <label class="form-label">Employee ID</label>
       <div style="display:flex;align-items:center;gap:10px">
-        <input class="form-input" id="f-empId" readonly style="background:var(--bg-card2);color:var(--accent);font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;flex:1">
+        <input class="form-input" id="f-empId" readonly style="background:var(--bg-card2);color:var(--accent);font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;flex:1"><input type="hidden" id="f-empDbId">
         <button onclick="generateEmpId()" type="button" id="empId-regen-btn" style="padding:11px 14px;border-radius:12px;border:1px solid var(--border-hi);background:var(--bg-card2);color:var(--text2);font-family:var(--font-head);font-size:0.72rem;font-weight:700;cursor:pointer;white-space:nowrap">↻ New ID</button>
       </div>
     </div>
@@ -6781,7 +6781,7 @@ function openEditEmp(empId){
   var emp=employees.find(function(e){return e.id===empId;});if(!emp)return;
   document.getElementById("f-empMode").value="edit";document.getElementById("empModal-title").innerHTML="Edit <span>Employee</span>";
   document.getElementById("empModal-save-btn").textContent="💾 Update Employee";document.getElementById("empId-regen-btn").style.display="none";
-  document.getElementById("f-empId").value=emp.emp_code||("EMP-"+String(employees.indexOf(emp)+1).padStart(3,"0"));document.getElementById("f-empName").value=emp.name||"";
+  document.getElementById("f-empId").value=emp.emp_code||("EMP-"+String(employees.indexOf(emp)+1).padStart(3,"0"));document.getElementById("f-empDbId").value=emp.id;document.getElementById("f-empName").value=emp.name||"";
   document.getElementById("f-empEmail").value=emp.email||"";document.getElementById("f-empPhone").value=emp.phone||"";
   document.getElementById("f-empWage").value=emp.wage||"";dpSetValue("f-empJoin",emp.join_date||"");
   setPayBasis(emp.pay_basis||"DAILY");document.getElementById("f-empCL").value=emp.cl_quota||12;document.getElementById("f-empSL").value=emp.sl_quota||6;
@@ -6824,6 +6824,7 @@ function saveEmployee(){
   var empPw    = document.getElementById("f-empPw").value.trim() || "emp123";
   var empPhoto = document.getElementById("f-empPhoto").value || null;
   var empId    = document.getElementById("f-empId").value.trim();
+  var empDbId  = (document.getElementById("f-empDbId")||{value:""}).value.trim() || empId;
 
   if(!empName)            return showToast("Enter employee name", true);
   if(!empWage||empWage<=0) return showToast("Enter a valid wage", true);
@@ -6849,6 +6850,7 @@ function saveEmployee(){
     setPayBasis("DAILY");
     ["phone-hint","email-hint","wage-hint"].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display="none"; });
     var rb=document.getElementById("empId-regen-btn"); if(rb) rb.style.display="";
+    var fdb=document.getElementById("f-empDbId"); if(fdb) fdb.value="";
     var fm=document.getElementById("f-empMode"); if(fm) fm.value="add";
     var mt=document.getElementById("empModal-title"); if(mt) mt.innerHTML="Add <span>Employee</span>";
     var sb2=document.getElementById("empModal-save-btn"); if(sb2) sb2.textContent="Save Employee";
@@ -6860,9 +6862,9 @@ function saveEmployee(){
     if(empPhoto) updates.photo = empPhoto;
     if(dept)     updates.dept = dept;
     if(empJoin)  updates.join_date = empJoin;
-    sb("employees","PATCH",updates,"?id=eq."+empId).then(function(r){
+    sb("employees","PATCH",updates,"?id=eq."+empDbId).then(function(r){
       if(r!==null&&r!==false){
-        for(var i=0;i<employees.length;i++){if(employees[i].id===empId){employees[i]=Object.assign({},employees[i],updates);break;}}
+        for(var i=0;i<employees.length;i++){if(employees[i].id===empDbId){employees[i]=Object.assign({},employees[i],updates);break;}}
         closeModal("empModal"); renderEmployees(); renderDashboard(); resetForm();
         addAuditLog("✏️","Employee Updated","Updated "+empName,"var(--accent)");
         showToast("✓ "+empName+" updated!");
@@ -6870,7 +6872,7 @@ function saveEmployee(){
         // Minimal fallback
         var u2={name:empName, role:role, wage:empWage};
         if(empPhoto) u2.photo=empPhoto;
-        sb("employees","PATCH",u2,"?id=eq."+empId).then(function(r2){
+        sb("employees","PATCH",u2,"?id=eq."+empDbId).then(function(r2){
           if(r2!==null&&r2!==false){
             for(var i=0;i<employees.length;i++){if(employees[i].id===empId){employees[i]=Object.assign({},employees[i],u2);break;}}
             closeModal("empModal"); renderEmployees(); renderDashboard(); resetForm();
