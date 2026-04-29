@@ -6866,14 +6866,11 @@ function saveEmployee(){
 
   if(mode==="edit"){
     // Update — only safe columns, no cl_quota/sl_quota
-    var updates = {name:empName, role:role, email:empEmail||null, phone:phone||null, wage:empWage, pay_basis:empPay, password:empPw};
-    if(empPhoto) updates.photo = empPhoto;
-    if(dept)     updates.dept = dept;
-    if(empJoin)  updates.join_date = empJoin;
-    console.log("PATCH empDbId:", empDbId, "updates:", JSON.stringify(updates));
-    showToast("Saving...");
+    var updates = {name:empName, role:role, email:empEmail||null, phone:phone||null, wage:empWage, pay_basis:empPay, password:empPw, emp_code:emp.emp_code||null};
+    if(empPhoto)  updates.photo    = empPhoto;
+    if(dept)      updates.dept     = dept;
+    if(empJoin)   updates.join_date= empJoin;
     sb("employees","PATCH",updates,"?id=eq."+empDbId).then(function(r){
-      console.log("PATCH result:", r, "sbLastError:", window._sbLastError);
       if(r!==null&&r!==false){
         for(var i=0;i<employees.length;i++){if(employees[i].id===empDbId){employees[i]=Object.assign({},employees[i],updates);break;}}
         closeModal("empModal"); renderEmployees(); renderDashboard(); resetForm();
