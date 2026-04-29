@@ -6741,7 +6741,7 @@ function renderEmployees(){
     h+="<div class='emp-role' style='color:var(--green)'>₹"+e.wage+(e.pay_basis==="MONTHLY"?"/month 🗓":"/day 📅")+" · "+esc(e.dept||"—")+"</div>";
     if(e.phone)h+="<div class='emp-role'>📞 "+esc(e.phone)+"</div>";
     h+="</div><div style='display:flex;gap:6px;margin-top:6px;flex-wrap:wrap'>";
-    h+="<button onclick=\"openEditEmp('"+(e.emp_code||"EMP-"+String(employees.indexOf(e)+1).padStart(3,"0"))+"')\" style='background:rgba(240,180,41,0.1);color:var(--accent);border:1px solid rgba(240,180,41,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer'>✏ Edit</button>";
+    h+="<button onclick=\"openEditEmp('"+esc(e.id)+"')\" style='background:rgba(240,180,41,0.1);color:var(--accent);border:1px solid rgba(240,180,41,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer'>✏ Edit</button>";
     h+="<button onclick=\"openOpeningBalModal('"+(e.emp_code||"EMP-"+String(employees.indexOf(e)+1).padStart(3,"0"))+"','"+esc(e.name).replace(/'/g,"\\'")+"')\" style='background:rgba(91,168,245,0.1);color:var(--blue);border:1px solid rgba(91,168,245,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer'>📂 Balance</button>";
     h+="<button onclick=\"deleteEmpPrompt('"+(e.emp_code||"EMP-"+String(employees.indexOf(e)+1).padStart(3,"0"))+"','"+esc(e.name).replace(/'/g,"\\'")+"')\" style='background:var(--red-dim);color:var(--red);border:1px solid rgba(241,107,107,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer'>🗑</button>";
     h+="</div></div>";
