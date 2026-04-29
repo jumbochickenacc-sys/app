@@ -5326,7 +5326,6 @@ async function sbSignUp(email, password) {
   var res = await fetch(SB_URL + '/auth/v1/signup', {
     method: 'POST',
     mode: 'cors',
-    mode: 'cors',
     headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: email, password: password })
   });
@@ -5344,7 +5343,6 @@ async function sbSignUp(email, password) {
 async function sbSignIn(email, password) {
   var res = await fetch(SB_URL + '/auth/v1/token?grant_type=password', {
     method: 'POST',
-    mode: 'cors',
     mode: 'cors',
     headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: email, password: password })
@@ -6725,9 +6723,6 @@ function filterEmployees(val){
   renderEmployees();
 }
 function clearEmpSearch(){document.getElementById("emp-search").value="";empSearchFilter="";document.getElementById("emp-search-clear").style.display="none";renderEmployees();}
-function getEmpExtras(emp){
-  try{ return JSON.parse(localStorage.getItem('emp_extra_'+emp.id)||'{}'); }catch(e){ return {}; }
-}
 function renderEmployees(){
   var el=document.getElementById("emp-list");var h="";var filtered=employees;
   if(empSearchFilter){filtered=employees.filter(function(e){return(e.name||"").toLowerCase().indexOf(empSearchFilter)>=0||(e.role||"").toLowerCase().indexOf(empSearchFilter)>=0||(e.id||"").toLowerCase().indexOf(empSearchFilter)>=0||(e.dept||"").toLowerCase().indexOf(empSearchFilter)>=0;});}
@@ -6739,14 +6734,14 @@ function renderEmployees(){
     var obBadge="";
     if(ob!==0){var obColor=ob>0?"var(--red)":"var(--orange)";obBadge="<span style='font-size:0.62rem;font-weight:700;color:"+obColor+";padding:2px 8px;border-radius:6px;border:1px solid "+obColor+"33;background:"+obColor+"11;margin-left:4px'>"+(ob>0?"Due ₹":"Credit ₹")+Math.abs(ob).toLocaleString("en-IN")+"</span>";}
     h+="<div class='emp-item' style='flex-wrap:wrap'><div class='emp-avatar'>"+avatarContent+"</div><div class='emp-info' style='flex:1;min-width:0'>";
-    h+="<div class='emp-name'>"+esc(e.name)+" <span style='color:var(--text3);font-size:0.7rem;font-weight:400'>"+(e.emp_code||"EMP-"+String(i+1).padStart(3,"0"))+"</span>"+obBadge+"</div>";
+    h+="<div class='emp-name'>"+esc(e.name)+" <span style='color:var(--text3);font-size:0.7rem;font-weight:400'>"+esc(e.id)+"</span>"+obBadge+"</div>";
     h+="<div class='emp-role'>"+esc(e.role||"Staff")+"</div>";
     h+="<div class='emp-role' style='color:var(--green)'>₹"+e.wage+(e.pay_basis==="MONTHLY"?"/month 🗓":"/day 📅")+" · "+esc(e.dept||"—")+"</div>";
     if(e.phone)h+="<div class='emp-role'>📞 "+esc(e.phone)+"</div>";
     h+="</div><div style='display:flex;gap:6px;margin-top:6px;flex-wrap:wrap'>";
     h+="<button onclick=\"openEditEmp('"+esc(e.id)+"')\" style='background:rgba(240,180,41,0.1);color:var(--accent);border:1px solid rgba(240,180,41,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer'>✏ Edit</button>";
-    h+="<button onclick=\"openOpeningBalModal('"+(e.emp_code||"EMP-"+String(employees.indexOf(e)+1).padStart(3,"0"))+"','"+esc(e.name).replace(/'/g,"\\'")+"')\" style='background:rgba(91,168,245,0.1);color:var(--blue);border:1px solid rgba(91,168,245,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer'>📂 Balance</button>";
-    h+="<button onclick=\"deleteEmpPrompt('"+(e.emp_code||"EMP-"+String(employees.indexOf(e)+1).padStart(3,"0"))+"','"+esc(e.name).replace(/'/g,"\\'")+"')\" style='background:var(--red-dim);color:var(--red);border:1px solid rgba(241,107,107,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer'>🗑</button>";
+    h+="<button onclick=\"openOpeningBalModal('"+esc(e.id)+"','"+esc(e.name).replace(/'/g,"\\'")+"')\" style='background:rgba(91,168,245,0.1);color:var(--blue);border:1px solid rgba(91,168,245,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer'>📂 Balance</button>";
+    h+="<button onclick=\"deleteEmpPrompt('"+esc(e.id)+"','"+esc(e.name).replace(/'/g,"\\'")+"')\" style='background:var(--red-dim);color:var(--red);border:1px solid rgba(241,107,107,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer'>🗑</button>";
     h+="</div></div>";
   }
   el.innerHTML=h||"<div class='empty'><div class='empty-icon'>👤</div>"+(empSearchFilter?"No matches found":"No employees yet")+"</div>";
@@ -6776,21 +6771,30 @@ function handlePhotoUpload(input){
   reader.readAsDataURL(input.files[0]);
 }
 function generateEmpId(){
-  // Simple sequential: EMP-001, EMP-002, etc.
-  var next = employees.length + 1;
-  document.getElementById("f-empId").value = "EMP-" + String(next).padStart(3,"0");
+  // Generate ID from phone number if available, else use timestamp
+  var phone = (document.getElementById("f-empPhone").value||"").trim().replace(/\D/g,"");
+  if(phone.length >= 10){
+    // Use last 10 digits of phone as unique ID base
+    var pid = "EMP-" + phone.slice(-10);
+    document.getElementById("f-empId").value = pid;
+  } else {
+    // Fallback: fetch from DB to get next number
+    sb("employees","GET",null,"?select=id&order=id").then(function(rows){
+      var max=0;
+      (rows||[]).forEach(function(e){
+        var m=(e.id||"").match(/(\d+)$/);
+        if(m&&parseInt(m[1])>max)max=parseInt(m[1]);
+      });
+      document.getElementById("f-empId").value="EMP"+String(max+1).padStart(3,"0");
+    });
+  }
 }
 function openEditEmp(empId){
-  var emp=employees.find(function(e){return e.id===empId;});
-  if(!emp){ showToast("Employee not found",true); return; }
-  document.getElementById("f-empMode").value="edit";
-  document.getElementById("empModal-title").innerHTML="Edit <span>Employee</span>";
-  document.getElementById("empModal-save-btn").textContent="💾 Update Employee";
-  document.getElementById("empId-regen-btn").style.display="none";
-  // Show simple code, store real uuid in hidden field
-  document.getElementById("f-empId").value = emp.emp_code||("EMP-"+String(employees.indexOf(emp)+1).padStart(3,"0"));
-  var dbIdEl = document.getElementById("f-empDbId");
-  if(dbIdEl) dbIdEl.value = emp.id;
+  var emp=employees.find(function(e){return e.id===empId;});if(!emp)return;
+  document.getElementById("f-empMode").value="edit";document.getElementById("empModal-title").innerHTML="Edit <span>Employee</span>";
+  document.getElementById("empModal-save-btn").textContent="💾 Update Employee";document.getElementById("empId-regen-btn").style.display="none";
+  document.getElementById("f-empId").value=emp.emp_code||(emp.id.slice(0,8));
+  var _dbEl=document.getElementById("f-empDbId");if(_dbEl)_dbEl.value=emp.id;
   document.getElementById("f-empName").value=emp.name||"";
   document.getElementById("f-empEmail").value=emp.email||"";document.getElementById("f-empPhone").value=emp.phone||"";
   document.getElementById("f-empWage").value=emp.wage||"";dpSetValue("f-empJoin",emp.join_date||"");
@@ -6813,142 +6817,37 @@ function validateEmail(el){var hint=document.getElementById("email-hint");var va
 function validatePhone(el){var hint=document.getElementById("phone-hint");var val=el.value;if(!val){hint.style.display="none";el.style.borderColor="var(--border-hi)";}else if(val.length<10){hint.style.display="block";hint.style.color="var(--orange)";hint.textContent="⚠ "+(10-val.length)+" more digits";el.style.borderColor="var(--orange)";}else{// Check duplicate
 var mode=document.getElementById("f-empMode").value;var dup=mode==="add"?employees.find(function(e){return e.phone===val;}):null;if(dup){hint.style.display="block";hint.style.color="var(--red)";hint.textContent="✗ Already used by "+dup.name;el.style.borderColor="var(--red)";}else{hint.style.display="block";hint.style.color="var(--green)";hint.textContent="✓ Valid · ID will be EMP-"+val;el.style.borderColor="var(--green)";}}}
 
-function generateEmpCode(){
-  // Generate simple code: EMP-001, EMP-002, etc.
-  var next = (employees.length + 1);
-  return 'EMP-' + String(next).padStart(3,'0');
-}
-
 function saveEmployee(){
-  var mode = document.getElementById("f-empMode").value;
-  var roleSelect = document.getElementById("f-empRole").value;
-  var role = roleSelect==="__custom__" ? document.getElementById("f-empRoleCustom").value.trim() : roleSelect;
-  var deptSelect = document.getElementById("f-empDept").value;
-  var dept = deptSelect==="__custom__" ? document.getElementById("f-empDeptCustom").value.trim() : deptSelect;
-  var phone    = document.getElementById("f-empPhone").value.trim();
-  var empName  = document.getElementById("f-empName").value.trim();
-  var empWage  = parseInt(document.getElementById("f-empWage").value) || 0;
-  var empEmail = document.getElementById("f-empEmail").value.trim();
-  var empPay   = document.getElementById("f-empPayBasis").value || "DAILY";
-  var empJoin  = document.getElementById("f-empJoin").value || null;
-  var empPw    = document.getElementById("f-empPw").value.trim() || "emp123";
-  var empPhoto = document.getElementById("f-empPhoto").value || null;
-  var empId    = document.getElementById("f-empId").value.trim();
-  var _dbEl = document.getElementById("f-empDbId");
-  var empDbId = (_dbEl && _dbEl.value.trim()) ? _dbEl.value.trim() : empId;
-
-  if(!empName)            return showToast("Enter employee name", true);
-  if(!empWage||empWage<=0) return showToast("Enter a valid wage", true);
-  if(!role)               return showToast("Select a role", true);
-  if(phone && !/^\d{10}$/.test(phone)) return showToast("Phone must be 10 digits", true);
+  var mode=document.getElementById("f-empMode").value;
+  var roleSelect=document.getElementById("f-empRole").value;var role=roleSelect==="__custom__"?document.getElementById("f-empRoleCustom").value.trim():roleSelect;
+  var deptSelect=document.getElementById("f-empDept").value;var dept=deptSelect==="__custom__"?document.getElementById("f-empDeptCustom").value.trim():deptSelect;
+  var phone=document.getElementById("f-empPhone").value.trim();
+  var emp={id:document.getElementById("f-empId").value.trim(),name:document.getElementById("f-empName").value.trim(),role:role,email:document.getElementById("f-empEmail").value.trim(),phone:phone,wage:parseInt(document.getElementById("f-empWage").value)||0,pay_basis:document.getElementById("f-empPayBasis").value||"DAILY",dept:dept,join_date:document.getElementById("f-empJoin").value,cl_quota:parseInt(document.getElementById("f-empCL").value)||12,sl_quota:parseInt(document.getElementById("f-empSL").value)||6,password:document.getElementById("f-empPw").value.trim()||"emp123",photo:document.getElementById("f-empPhoto").value||null};
+  if(!emp.id||!emp.name||!emp.wage){showToast("Fill ID, Name & Wage",true);return;}
+  if(emp.wage<=0){showToast("Wage must be > 0",true);return;}
+  if(!emp.role){showToast("Select a role",true);return;}
+  if(phone&&!/^\d{10}$/.test(phone)){showToast("Phone must be 10 digits",true);return;}
+  // Check duplicate phone
   if(phone && mode==="add"){
-    var dup = employees.find(function(e){ return e.phone===phone; });
-    if(dup) return showToast("Phone already used by "+dup.name, true);
+    var dupPhone = employees.find(function(e){ return e.phone===phone; });
+    if(dupPhone){ showToast("⚠ Phone "+phone+" already used by "+dupPhone.name, true); return; }
   }
-
-  function resetForm(){
-    ["f-empId","f-empName","f-empEmail","f-empPhone","f-empWage","f-empRoleCustom","f-empDeptCustom","f-empPw"].forEach(function(id){
-      var el=document.getElementById(id); if(el) el.value="";
-    });
-    dpSetValue("f-empJoin","");
-    var pp=document.getElementById("f-empPhoto"); if(pp) pp.value="";
-    var pr=document.getElementById("photo-preview"); if(pr) pr.style.display="none";
-    var pl=document.getElementById("photo-placeholder"); if(pl) pl.style.display="block";
-    var fr=document.getElementById("f-empRole"); if(fr) fr.value="";
-    var fd=document.getElementById("f-empDept"); if(fd) fd.value="";
-    var fcl=document.getElementById("f-empCL"); if(fcl) fcl.value="12";
-    var fsl=document.getElementById("f-empSL"); if(fsl) fsl.value="6";
-    setPayBasis("DAILY");
-    ["phone-hint","email-hint","wage-hint"].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display="none"; });
-    var rb=document.getElementById("empId-regen-btn"); if(rb) rb.style.display="";
-    var fdb=document.getElementById("f-empDbId"); if(fdb) fdb.value="";
-    var fm=document.getElementById("f-empMode"); if(fm) fm.value="add";
-    var mt=document.getElementById("empModal-title"); if(mt) mt.innerHTML="Add <span>Employee</span>";
-    var sb2=document.getElementById("empModal-save-btn"); if(sb2) sb2.textContent="Save Employee";
-  }
-
+  function resetForm(){["f-empId","f-empName","f-empEmail","f-empPhone","f-empWage","f-empRoleCustom","f-empDeptCustom","f-empPw"].forEach(function(f){document.getElementById(f).value="";});dpSetValue("f-empJoin","");document.getElementById("f-empPhoto").value="";document.getElementById("photo-preview").style.display="none";document.getElementById("photo-placeholder").style.display="block";document.getElementById("f-empRole").value="";document.getElementById("f-empDept").value="";document.getElementById("f-empCL").value="12";document.getElementById("f-empSL").value="6";setPayBasis("DAILY");["phone-hint","email-hint","wage-hint"].forEach(function(id){document.getElementById(id).style.display="none";});document.getElementById("empId-regen-btn").style.display="";document.getElementById("f-empMode").value="add";document.getElementById("empModal-title").innerHTML="Add <span>Employee</span>";document.getElementById("empModal-save-btn").textContent="Save Employee";}
   if(mode==="edit"){
-    // Update — only safe columns, no cl_quota/sl_quota
-    // Only send columns guaranteed to be in schema cache
-    // Save dept/join_date to localStorage (schema cache workaround)
-    var empLocalKey = 'emp_extra_'+empDbId;
-    var empExtras = JSON.parse(localStorage.getItem(empLocalKey)||'{}');
-    if(dept)    empExtras.dept     = dept;
-    if(empJoin) empExtras.join_date= empJoin;
-    localStorage.setItem(empLocalKey, JSON.stringify(empExtras));
-
-    var updates = {name:empName, role:role, email:empEmail||null, phone:phone||null, wage:empWage, pay_basis:empPay, password:empPw};
-    if(empPhoto) updates.photo = empPhoto;
-
-    sb("employees","PATCH",updates,"?id=eq."+empDbId).then(function(r){
-      if(r!==null&&r!==false){
-        // Merge localStorage extras into local employee object for display
-        for(var i=0;i<employees.length;i++){
-          if(employees[i].id===empDbId){
-            Object.assign(employees[i], updates, empExtras);
-            break;
-          }
-        }
-        closeModal("empModal"); renderEmployees(); renderDashboard(); resetForm();
-        addAuditLog("✏️","Employee Updated","Updated "+empName,"var(--accent)");
-        showToast("✓ "+empName+" updated!");
-
-        // Try to also save dept to DB in background (will work once schema cache refreshes)
-        if(dept || empJoin){
-          var bg = {};
-          if(dept) bg.dept = dept;
-          if(empJoin) bg.join_date = empJoin;
-          sb("employees","PATCH",bg,"?id=eq."+empDbId).catch(function(){});
-        }
-      } else {
-        var u2={name:empName, role:role, wage:empWage};
-        if(empPhoto) u2.photo=empPhoto;
-        sb("employees","PATCH",u2,"?id=eq."+empDbId).then(function(r2){
-          if(r2!==null&&r2!==false){
-            for(var i=0;i<employees.length;i++){if(employees[i].id===empDbId){Object.assign(employees[i],u2,empExtras);break;}}
-            closeModal("empModal"); renderEmployees(); renderDashboard(); resetForm();
-            showToast("✓ "+empName+" updated! (dept saved locally)");
-          } else showToast("Update failed: "+(window._sbLastError||"unknown"),true);
-        });
-      }
+    var updates={name:emp.name,role:emp.role,email:emp.email||null,phone:emp.phone||null,wage:emp.wage,pay_basis:emp.pay_basis||"DAILY",password:emp.password};
+    if(emp.photo)updates.photo=emp.photo;
+    updates.pay_basis=emp.pay_basis||"DAILY";
+    sb("employees","PATCH",updates,"?id=eq."+(document.getElementById("f-empDbId")&&document.getElementById("f-empDbId").value?document.getElementById("f-empDbId").value:emp.id)).then(function(r){
+      if(r!==null&&r!==false){for(var i=0;i<employees.length;i++){if(employees[i].id===emp.id){employees[i]=Object.assign({},employees[i],updates,{id:emp.id});break;}}closeModal("empModal");renderEmployees();renderDashboard();resetForm();addAuditLog("✏️","Employee Updated","Updated "+emp.name,"var(--accent)");showToast("✓ "+emp.name+" updated!");}
+      else{var u2=Object.assign({},updates);delete u2.pay_basis;sb("employees","PATCH",u2,"?id=eq."+emp.id).then(function(r2){if(r2!==null&&r2!==false){u2.pay_basis=emp.pay_basis;for(var i=0;i<employees.length;i++){if(employees[i].id===emp.id){employees[i]=Object.assign({},employees[i],u2,{id:emp.id});break;}}closeModal("empModal");renderEmployees();renderDashboard();resetForm();showToast("✓ Updated (add pay_basis column to Supabase)");}else showToast("Update failed: "+(window._sbLastError||"unknown"),true);});}
     });
-
   } else {
-    // Add new employee — DB generates UUID, we store simple emp_code
-    var empCode = generateEmpCode();
-    var newEmp = {
-      emp_code: empCode,
-      name:     empName,
-      role:     role,
-      phone:    phone||null,
-      wage:     empWage,
-      email:    empEmail||null,
-      pay_basis:empPay,
-      password: empPw,
-      photo:    empPhoto||null,
-      shop_id:  currentShop ? currentShop.id : null
-    };
-    if(dept)    newEmp.dept = dept;
-    if(empJoin) newEmp.join_date = empJoin;
-
-    sb("employees","POST",newEmp).then(function(res){
-      if(res&&res[0]){
-        employees.push(res[0]);
-        closeModal("empModal"); renderEmployees(); renderDashboard();
-        addAuditLog("➕","Employee Added",empCode+" "+empName,"var(--green)");
-        showToast("✓ "+empName+" added as "+empCode+"!");
-        resetForm();
-      } else {
-        // Minimal fallback without optional cols
-        var min={name:empName, role:role, wage:empWage, phone:phone||null, shop_id:currentShop?currentShop.id:null, emp_code:empCode};
-        sb("employees","POST",min).then(function(r2){
-          if(r2&&r2[0]){
-            employees.push(r2[0]);
-            closeModal("empModal"); renderEmployees(); renderDashboard();
-            showToast("✓ "+empName+" added!"); resetForm();
-          } else showToast("Save failed: "+(window._sbLastError||"Check Supabase"),true);
-        });
-      }
+    var empPost={name:emp.name,role:emp.role,email:emp.email||null,phone:emp.phone||null,wage:emp.wage,pay_basis:emp.pay_basis||"DAILY",password:emp.password||"emp123",photo:emp.photo||null,shop_id:currentShop?currentShop.id:null};
+    if(emp.dept) empPost.dept=emp.dept;
+    if(emp.join_date) empPost.join_date=emp.join_date;
+    sb("employees","POST",empPost).then(function(res){
+      if(res&&res[0]){employees.push(res[0]);closeModal("empModal");renderEmployees();renderDashboard();addAuditLog("➕","Employee Added","Added "+emp.name+" ("+emp.id+")","var(--green)");showToast("✓ "+emp.name+" added!");resetForm();}
+      else{var empSafe=Object.assign({},emp);delete empSafe.pay_basis;sb("employees","POST",empSafe).then(function(res2){if(res2&&res2[0]){employees.push(Object.assign({},res2[0],{pay_basis:emp.pay_basis}));closeModal("empModal");renderEmployees();renderDashboard();showToast("✓ Added! (add pay_basis column for full support)");resetForm();}else showToast("Failed — check ID is unique",true);});}
     });
   }
 }
@@ -8131,8 +8030,7 @@ function initIncrementPanel(){
 }
 function showCurrentWage(){
   var empId=document.getElementById("increment-emp").value;
-  var emp=employees.find(function(e){return e.id===empId;});if(!emp){ showToast("Employee not found",true); return; }
-  emp = Object.assign({}, emp, getEmpExtras(emp));
+  var emp=employees.find(function(e){return e.id===empId;});if(!emp)return;
   var wrap=document.getElementById("increment-current-wage");var disp=document.getElementById("increment-wage-display");
   if(wrap)wrap.style.display="block";
   if(disp)disp.textContent="₹"+emp.wage.toLocaleString("en-IN")+(emp.pay_basis==="MONTHLY"?"/month":"/day");
@@ -8869,7 +8767,7 @@ function generatePDF(emp,r){
   +'<div class="slip">'
   +'<div class="slip-header"><div style="display:flex;align-items:center;gap:16px">'+logoBlock+'<div><div class="co-name">'+esc(s.name)+'<\/div>'+(s.tagline?'<div class="co-sub">'+esc(s.tagline)+'<\/div>':'')+(s.address?'<div class="co-sub">\ud83d\udccd '+esc(s.address)+'<\/div>':'')+(s.gstin?'<div class="co-sub">GSTIN: '+esc(s.gstin)+'<\/div>':'')+'<\/div><\/div>'
   +'<div class="slip-title-right"><div class="slip-type-lbl">'+slipTitle+'<\/div><div class="slip-month-lbl">'+monthLabel+'<\/div><div class="slip-id-lbl">Slip #'+r.pay_date.replace(/-/g,'')+(emp.id?'-'+emp.id:'')+'<\/div><\/div><\/div>'
-  +'<div class="emp-section">'+empAvatar+'<div style="flex:1;min-width:0"><div class="emp-name">'+esc(emp.name||'')+'<\/div><div class="emp-role">'+esc(emp.role||'Staff')+(emp.dept?' &nbsp;\u00b7&nbsp; '+esc(emp.dept):'')+'<\/div>'+(emp.phone?'<div class="emp-meta">\ud83d\udcde '+esc(emp.phone)+'<\/div>':'')+((emp.emp_code||emp.id)?'<span class="emp-id-badge">ID: '+(emp.emp_code||'EMP-001')+'<\/span>':"")+'<\/div>'
+  +'<div class="emp-section">'+empAvatar+'<div style="flex:1;min-width:0"><div class="emp-name">'+esc(emp.name||'')+'<\/div><div class="emp-role">'+esc(emp.role||'Staff')+(emp.dept?' &nbsp;\u00b7&nbsp; '+esc(emp.dept):'')+'<\/div>'+(emp.phone?'<div class="emp-meta">\ud83d\udcde '+esc(emp.phone)+'<\/div>':'')+(emp.id?'<span class="emp-id-badge">ID: '+esc(emp.id)+'<\/span>':'')+'<\/div>'
   +'<div style="text-align:right;flex-shrink:0"><div style="font-size:0.62rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em">Pay Date<\/div><div style="font-size:0.9rem;font-weight:700;color:#1a1a2e;margin-top:3px">'+fmtDate(r.pay_date)+'<\/div><div style="margin-top:8px"><span style="background:'+(isAdv?'#fff7ed':'#f0fdf4')+';color:'+(isAdv?'#c2410c':'#166534')+';padding:3px 12px;border-radius:20px;font-size:0.7rem;font-weight:700;border:1px solid '+(isAdv?'#fed7aa':'#bbf7d0')+'">'+(isAdv?'ADVANCE':'SALARY')+'<\/span><\/div><\/div><\/div>'
   +'<div class="period-bar"><span class="period-label">Pay Period<\/span><span class="period-value">'+monthLabel+'<\/span><span class="period-label">Working Days<\/span><span class="period-value">'+(r.days||0)+' days<\/span><\/div>'
   +'<div class="slip-section"><div class="section-title">Attendance Summary<\/div><div class="att-row">'+attRow+'<\/div><\/div>'
@@ -16022,7 +15920,7 @@ function generatePDF(emp,r){
   +'<div class="slip">'
   +'<div class="slip-header"><div style="display:flex;align-items:center;gap:16px">'+logoBlock+'<div><div class="co-name">'+esc(s.name)+'<\/div>'+(s.tagline?'<div class="co-sub">'+esc(s.tagline)+'<\/div>':'')+(s.address?'<div class="co-sub">\ud83d\udccd '+esc(s.address)+'<\/div>':'')+(s.gstin?'<div class="co-sub">GSTIN: '+esc(s.gstin)+'<\/div>':'')+'<\/div><\/div>'
   +'<div class="slip-title-right"><div class="slip-type-lbl">'+slipTitle+'<\/div><div class="slip-month-lbl">'+monthLabel+'<\/div><div class="slip-id-lbl">Slip #'+r.pay_date.replace(/-/g,'')+(emp.id?'-'+emp.id:'')+'<\/div><\/div><\/div>'
-  +'<div class="emp-section">'+empAvatar+'<div style="flex:1;min-width:0"><div class="emp-name">'+esc(emp.name||'')+'<\/div><div class="emp-role">'+esc(emp.role||'Staff')+(emp.dept?' &nbsp;\u00b7&nbsp; '+esc(emp.dept):'')+'<\/div>'+(emp.phone?'<div class="emp-meta">\ud83d\udcde '+esc(emp.phone)+'<\/div>':'')+((emp.emp_code||emp.id)?'<span class="emp-id-badge">ID: '+(emp.emp_code||'EMP-001')+'<\/span>':"")+'<\/div>'
+  +'<div class="emp-section">'+empAvatar+'<div style="flex:1;min-width:0"><div class="emp-name">'+esc(emp.name||'')+'<\/div><div class="emp-role">'+esc(emp.role||'Staff')+(emp.dept?' &nbsp;\u00b7&nbsp; '+esc(emp.dept):'')+'<\/div>'+(emp.phone?'<div class="emp-meta">\ud83d\udcde '+esc(emp.phone)+'<\/div>':'')+(emp.id?'<span class="emp-id-badge">ID: '+esc(emp.id)+'<\/span>':'')+'<\/div>'
   +'<div style="text-align:right;flex-shrink:0"><div style="font-size:0.62rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em">Pay Date<\/div><div style="font-size:0.9rem;font-weight:700;color:#1a1a2e;margin-top:3px">'+fmtDate(r.pay_date)+'<\/div><div style="margin-top:8px"><span style="background:'+(isAdv?'#fff7ed':'#f0fdf4')+';color:'+(isAdv?'#c2410c':'#166534')+';padding:3px 12px;border-radius:20px;font-size:0.7rem;font-weight:700;border:1px solid '+(isAdv?'#fed7aa':'#bbf7d0')+'">'+(isAdv?'ADVANCE':'SALARY')+'<\/span><\/div><\/div><\/div>'
   +'<div class="period-bar"><span class="period-label">Pay Period<\/span><span class="period-value">'+monthLabel+'<\/span><span class="period-label">Working Days<\/span><span class="period-value">'+(r.days||0)+' days<\/span><\/div>'
   +'<div class="slip-section"><div class="section-title">Attendance Summary<\/div><div class="att-row">'+attRow+'<\/div><\/div>'
