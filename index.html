@@ -6773,29 +6773,15 @@ function handlePhotoUpload(input){
   reader.readAsDataURL(input.files[0]);
 }
 function generateEmpId(){
-  // Generate ID from phone number if available, else use timestamp
-  var phone = (document.getElementById("f-empPhone").value||"").trim().replace(/\D/g,"");
-  if(phone.length >= 10){
-    // Use last 10 digits of phone as unique ID base
-    var pid = "EMP-" + phone.slice(-10);
-    document.getElementById("f-empId").value = pid;
-  } else {
-    // Fallback: fetch from DB to get next number
-    sb("employees","GET",null,"?select=id&order=id").then(function(rows){
-      var max=0;
-      (rows||[]).forEach(function(e){
-        var m=(e.id||"").match(/(\d+)$/);
-        if(m&&parseInt(m[1])>max)max=parseInt(m[1]);
-      });
-      document.getElementById("f-empId").value="EMP"+String(max+1).padStart(3,"0");
-    });
-  }
+  // Simple sequential: EMP-001, EMP-002, etc.
+  var next = employees.length + 1;
+  document.getElementById("f-empId").value = "EMP-" + String(next).padStart(3,"0");
 }
 function openEditEmp(empId){
   var emp=employees.find(function(e){return e.id===empId;});if(!emp)return;
   document.getElementById("f-empMode").value="edit";document.getElementById("empModal-title").innerHTML="Edit <span>Employee</span>";
   document.getElementById("empModal-save-btn").textContent="💾 Update Employee";document.getElementById("empId-regen-btn").style.display="none";
-  document.getElementById("f-empId").value=emp.id;document.getElementById("f-empName").value=emp.name||"";
+  document.getElementById("f-empId").value=emp.emp_code||("EMP-"+String(employees.indexOf(emp)+1).padStart(3,"0"));document.getElementById("f-empName").value=emp.name||"";
   document.getElementById("f-empEmail").value=emp.email||"";document.getElementById("f-empPhone").value=emp.phone||"";
   document.getElementById("f-empWage").value=emp.wage||"";dpSetValue("f-empJoin",emp.join_date||"");
   setPayBasis(emp.pay_basis||"DAILY");document.getElementById("f-empCL").value=emp.cl_quota||12;document.getElementById("f-empSL").value=emp.sl_quota||6;
