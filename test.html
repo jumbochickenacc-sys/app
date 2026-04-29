@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connection Test</title>
+<style>
+body{font-family:sans-serif;padding:20px;background:#f5f5f5;max-width:500px;margin:0 auto}
+h2{color:#333;margin-bottom:20px}
+.btn{width:100%;padding:14px;background:#E67E22;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:10px}
+.result{padding:14px;border-radius:10px;margin-bottom:10px;font-size:14px;line-height:1.6;display:none}
+.ok{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
+.fail{background:#f8d7da;color:#721c24;border:1px solid #f5c6cb}
+.info{background:#d1ecf1;color:#0c5460;border:1px solid #bee5eb}
+.step{background:#fff;border:1px solid #ddd;border-radius:10px;padding:14px;margin-bottom:10px}
+.step-title{font-weight:700;color:#333;margin-bottom:6px}
+.step-status{font-size:13px;color:#666}
+</style>
+</head>
+<body>
+<h2>🔍 HENPEC Connection Tester</h2>
+
+<div class="step">
+  <div class="step-title">Supabase URL</div>
+  <div class="step-status" id="sb-url">https://aailvbqqmkscpxrspdtz.supabase.co</div>
+</div>
+
+<button class="btn" onclick="runTest()">▶ Run Full Connection Test</button>
+
+<div class="result info" id="r-start">⏳ Testing connection to Supabase...</div>
+<div class="result" id="r-ping"></div>
+<div class="result" id="r-auth"></div>
+<div class="result" id="r-cors"></div>
+<div class="result" id="r-summary"></div>
+
+<script>
+var SB_URL = 'https://aailvbqqmkscpxrspdtz.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaWx2YnFxbWtzY3B4cnNwZHR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNTE1NTksImV4cCI6MjA5MTgyNzU1OX0.ch5t5YaiOtaWqeylMO4R72Afc2aZCaComPi61Im1wRc';
+
+function show(id, msg, type) {
+  var el = document.getElementById(id);
+  el.style.display = 'block';
+  el.className = 'result ' + type;
+  el.innerHTML = msg;
+}
+
+async function runTest() {
+  show('r-start', '⏳ Running tests...', 'info');
+  document.getElementById('r-ping').style.display = 'none';
+  document.getElementById('r-auth').style.display = 'none';
+  document.getElementById('r-cors').style.display = 'none';
+  document.getElementById('r-summary').style.display = 'none';
+
+  var allOk = true;
+
+  // Test 1: Basic ping
+  try {
+    var r1 = await fetch(SB_URL + '/rest/v1/', {
+      mode: 'cors',
+      headers: { 'apikey': SB_KEY }
+    });
+    show('r-ping', '✅ Test 1 PASSED — Supabase server reachable (Status: ' + r1.status + ')', 'ok');
+  } catch(e) {
+    allOk = false;
+    show('r-ping', '❌ Test 1 FAILED — Cannot reach Supabase server<br><strong>Error:</strong> ' + e.message + '<br><br>This means your Supabase project is paused or there is a network issue.', 'fail');
+  }
+
+  // Test 2: Auth endpoint
+  try {
+    var r2 = await fetch(SB_URL + '/auth/v1/settings', {
+      mode: 'cors',
+      headers: { 'apikey': SB_KEY }
+    });
+    var d2 = await r2.json();
+    if (d2.external && d2.external.email !== undefined) {
+      show('r-auth', '✅ Test 2 PASSED — Auth endpoint working. Email confirmation: <strong>' + (d2.external.email ? 'ON' : 'OFF') + '</strong>' + (d2.external.email ? '<br>⚠️ Email confirmation is ON — please turn it OFF in Supabase → Authentication → Sign In/Providers → Email' : ' ✅'), 'ok');
+    } else {
+      show('r-auth', '✅ Test 2 PASSED — Auth endpoint responding (Status: ' + r2.status + ')', 'ok');
+    }
+  } catch(e) {
+    allOk = false;
+    show('r-auth', '❌ Test 2 FAILED — Auth endpoint blocked<br><strong>Error:</strong> ' + e.message + '<br><br>This is a CORS error. Go to Supabase → Authentication → URL Configuration → set Site URL to: https://jumbochickenacc-sys.github.io', 'fail');
+  }
+
+  // Test 3: CORS test with signup endpoint (dry run)
+  try {
+    var r3 = await fetch(SB_URL + '/auth/v1/signup', {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'test_cors_check@test.com', password: 'testpass123' })
+    });
+    var d3 = await r3.json();
+    if (r3.status === 400 || r3.status === 422 || d3.error || d3.msg) {
+      show('r-cors', '✅ Test 3 PASSED — CORS is working correctly! Signup endpoint is accessible.<br><small>Status ' + r3.status + ' (expected — test email was rejected by Supabase)</small>', 'ok');
+    } else if (r3.status === 200 || r3.status === 201) {
+      show('r-cors', '✅ Test 3 PASSED — Signup endpoint working perfectly!', 'ok');
+    } else {
+      show('r-cors', '⚠️ Test 3 — Signup responded with status ' + r3.status + '. Response: ' + JSON.stringify(d3).slice(0,200), 'info');
+    }
+  } catch(e) {
+    allOk = false;
+    show('r-cors', '❌ Test 3 FAILED — Signup endpoint blocked by CORS<br><strong>Error:</strong> ' + e.message + '<br><br><strong>Fix:</strong> Go to Supabase → Authentication → URL Configuration<br>Set Site URL to: <code>https://jumbochickenacc-sys.github.io</code><br>Add Redirect URL: <code>https://jumbochickenacc-sys.github.io/app/</code>', 'fail');
+  }
+
+  // Summary
+  if (allOk) {
+    show('r-start', '✅ All tests passed — connection is working!', 'ok');
+    show('r-summary', '🎉 <strong>Everything is working!</strong><br><br>Go back to your app and try registering again:<br><a href="https://jumbochickenacc-sys.github.io/app/" target="_blank">👉 Open App</a>', 'ok');
+  } else {
+    show('r-start', '❌ Some tests failed — see details below', 'fail');
+    show('r-summary', '⚠️ <strong>Fix the failed tests above</strong>, then come back and run this test again to confirm everything is working before registering.', 'fail');
+  }
+}
+</script>
+</body>
+</html>
