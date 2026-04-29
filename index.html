@@ -5401,35 +5401,41 @@ function sbGetUser() {
 
 // ── DB: Query (GET with filters) ─────────────────────────────────────
 async function sbFrom(table, query) {
-  var url = SB_URL + '/rest/v1/' + table + (query || '');
-  var res = await fetch(url, { headers: sbHeaders({ 'Prefer': 'return=representation' }) });
-  if (!res.ok) { var e = await res.json(); return { data: null, error: e }; }
-  var data = await res.json();
-  return { data: data, error: null };
+  try {
+    var url = SB_URL + '/rest/v1/' + table + (query || '');
+    var res = await fetch(url, { mode:'cors', headers: sbHeaders({ 'Prefer': 'return=representation' }) });
+    if (!res.ok) { var e = await res.json().catch(function(){return{};}); return { data: null, error: e }; }
+    var data = await res.json();
+    return { data: data, error: null };
+  } catch(e) { console.error('sbFrom error:', e); return { data: [], error: { message: e.message } }; }
 }
 
 // ── DB: Insert ────────────────────────────────────────────────────────
 async function sbInsert(table, body) {
-  var res = await fetch(SB_URL + '/rest/v1/' + table, {
-    method: 'POST',
-    headers: sbHeaders({ 'Prefer': 'return=representation' }),
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) { var e = await res.json(); return { data: null, error: e }; }
-  var data = await res.json();
-  return { data: Array.isArray(data) ? data[0] : data, error: null };
+  try {
+    var res = await fetch(SB_URL + '/rest/v1/' + table, {
+      method: 'POST', mode: 'cors',
+      headers: sbHeaders({ 'Prefer': 'return=representation' }),
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) { var e = await res.json().catch(function(){return{};}); return { data: null, error: e }; }
+    var data = await res.json();
+    return { data: Array.isArray(data) ? data[0] : data, error: null };
+  } catch(e) { console.error('sbInsert error:', e); return { data: null, error: { message: e.message } }; }
 }
 
 // ── DB: Update ────────────────────────────────────────────────────────
 async function sbUpdate(table, body, query) {
-  var res = await fetch(SB_URL + '/rest/v1/' + table + (query||''), {
-    method: 'PATCH',
-    headers: sbHeaders({ 'Prefer': 'return=representation' }),
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) { var e = await res.json(); return { data: null, error: e }; }
-  var data = await res.json();
-  return { data: data, error: null };
+  try {
+    var res = await fetch(SB_URL + '/rest/v1/' + table + (query||''), {
+      method: 'PATCH', mode: 'cors',
+      headers: sbHeaders({ 'Prefer': 'return=representation' }),
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) { var e = await res.json().catch(function(){return{};}); return { data: null, error: e }; }
+    var data = await res.json();
+    return { data: data, error: null };
+  } catch(e) { console.error('sbUpdate error:', e); return { data: null, error: { message: e.message } }; }
 }
 
 // Compat: keep db object shape for old code
@@ -5997,7 +6003,7 @@ async function doRegister() {
       'Prefer': 'return=representation'
     };
     var shopRes = await fetch(SB_URL + '/rest/v1/shops', {
-      method: 'POST',
+      method: 'POST', mode: 'cors',
       headers: insertHeaders,
       body: JSON.stringify(shopBody)
     });
