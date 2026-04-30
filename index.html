@@ -6662,7 +6662,8 @@ function renderCharts(){
   if (!chartAtt || !chartSal) return; // Charts not in DOM
   var now=new Date();var ym=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");var from=ym+"-01";var to=now.toISOString().split("T")[0];
   sb("attendance","GET",null,"?date=gte."+from+"&date=lte."+to).then(function(rows){
-    rows=rows||[];var map={};employees.forEach(function(e){map[e.id]={P:0,A:0,H:0,CL:0,SL:0};});
+    rows=rows||[];var map={};employees.forEach(function(e){
+    try{var _ex=JSON.parse(localStorage.getItem("henpec_emp_"+e.id)||"{}");Object.assign(e,_ex);}catch(_er){}map[e.id]={P:0,A:0,H:0,CL:0,SL:0};});
     rows.forEach(function(r){if(map[r.emp_id]&&r.status)map[r.emp_id][r.status]=(map[r.emp_id][r.status]||0)+1;});
     var totalP=0,totalA=0,totalH=0,totalCL=0,totalSL=0;
     Object.values(map).forEach(function(m){totalP+=m.P;totalA+=m.A;totalH+=m.H;totalCL+=m.CL;totalSL+=m.SL;});
@@ -6793,8 +6794,11 @@ function openEditEmp(empId){
   var emp=employees.find(function(e){return e.id===empId;});if(!emp)return;
   document.getElementById("f-empMode").value="edit";document.getElementById("empModal-title").innerHTML="Edit <span>Employee</span>";
   document.getElementById("empModal-save-btn").textContent="💾 Update Employee";document.getElementById("empId-regen-btn").style.display="none";
-  var _ed=emp.extra_data||{};emp=Object.assign({},emp,_ed);
-  document.getElementById("f-empId").value=emp.emp_code||("EMP-"+String(employees.indexOf(emp)+1).padStart(3,"0"));
+  // Merge localStorage extras into emp object
+  try{var _sx=JSON.parse(localStorage.getItem("henpec_emp_"+emp.id)||"{}");Object.assign(emp,_sx);}catch(e){}
+  // Show simple display ID, store real uuid in hidden field
+  var _simpId=emp.emp_code||("EMP-"+String(employees.indexOf(emp)+1).padStart(3,"0"));
+  document.getElementById("f-empId").value=_simpId;
   var _dbE=document.getElementById("f-empDbId");if(_dbE)_dbE.value=emp.id;document.getElementById("f-empName").value=emp.name||"";
   document.getElementById("f-empEmail").value=emp.email||"";document.getElementById("f-empPhone").value=emp.phone||"";
   document.getElementById("f-empWage").value=emp.wage||"";dpSetValue("f-empJoin",emp.join_date||"");
@@ -6834,15 +6838,43 @@ function saveEmployee(){
   }
   function resetForm(){["f-empId","f-empName","f-empEmail","f-empPhone","f-empWage","f-empRoleCustom","f-empDeptCustom","f-empPw"].forEach(function(f){document.getElementById(f).value="";});dpSetValue("f-empJoin","");document.getElementById("f-empPhoto").value="";document.getElementById("photo-preview").style.display="none";document.getElementById("photo-placeholder").style.display="block";document.getElementById("f-empRole").value="";document.getElementById("f-empDept").value="";document.getElementById("f-empCL").value="12";document.getElementById("f-empSL").value="6";setPayBasis("DAILY");["phone-hint","email-hint","wage-hint"].forEach(function(id){document.getElementById(id).style.display="none";});document.getElementById("empId-regen-btn").style.display="";document.getElementById("f-empMode").value="add";document.getElementById("empModal-title").innerHTML="Add <span>Employee</span>";document.getElementById("empModal-save-btn").textContent="Save Employee";}
   if(mode==="edit"){
-    var updates={name:emp.name,role:emp.role,phone:emp.phone||null,wage:emp.wage,pay_basis:emp.pay_basis||"DAILY",password:emp.password,extra_data:{email:emp.email||null,dept:emp.dept||null,join_date:emp.join_date||null,address:emp.address||null,cl_quota:emp.cl_quota||12,sl_quota:emp.sl_quota||6}};
+    var updates={name:emp.name,role:emp.role,phone:emp.phone||null,wage:emp.wage,pay_basis:emp.pay_basis||"DAILY",password:emp.password};
     if(emp.photo)updates.photo=emp.photo;
     updates.pay_basis=emp.pay_basis||"DAILY";
-    sb("employees","PATCH",updates,"?id=eq."+(document.getElementById("f-empDbId")&&document.getElementById("f-empDbId").value?document.getElementById("f-empDbId").value:emp.id)).then(function(r){
-      if(r!==null&&r!==false){for(var i=0;i<employees.length;i++){if(employees[i].id===emp.id){employees[i]=Object.assign({},employees[i],updates,{id:emp.id});break;}}closeModal("empModal");renderEmployees();renderDashboard();resetForm();addAuditLog("✏️","Employee Updated","Updated "+emp.name,"var(--accent)");showToast("✓ "+emp.name+" updated!");}
+    // Get real DB id from hidden field
+    var _dbEl=document.getElementById("f-empDbId");
+    var realId=(_dbEl&&_dbEl.value)?_dbEl.value:emp.id;
+
+    // Always save extras to localStorage (works on this device immediately)
+    var extras={email:emp.email||null,dept:emp.dept||null,join_date:emp.join_date||null,cl_quota:emp.cl_quota,sl_quota:emp.sl_quota,address:emp.address||null};
+    localStorage.setItem("henpec_emp_"+realId, JSON.stringify(extras));
+
+    sb("employees","PATCH",updates,"?id=eq."+realId).then(function(r){
+      if(r!==null&&r!==false){
+        for(var i=0;i<employees.length;i++){
+          if(employees[i].id===realId){
+            Object.assign(employees[i], updates, extras);
+            break;
+          }
+        }
+        closeModal("empModal");renderEmployees();renderDashboard();resetForm();
+        addAuditLog("✏️","Employee Updated","Updated "+emp.name,"var(--accent)");
+        showToast("✓ "+emp.name+" updated!");
+
+        // Background: try to save extras to DB too (will work once cache refreshes)
+        var bgExtras={};
+        if(emp.email!=null)     bgExtras.email     = emp.email;
+        if(emp.dept!=null)      bgExtras.dept      = emp.dept;
+        if(emp.join_date!=null) bgExtras.join_date = emp.join_date;
+        if(emp.address!=null)   bgExtras.address   = emp.address;
+        if(Object.keys(bgExtras).length>0){
+          sb("employees","PATCH",bgExtras,"?id=eq."+realId).catch(function(){});
+        }
+      }
       else{var u2=Object.assign({},updates);delete u2.pay_basis;sb("employees","PATCH",u2,"?id=eq."+emp.id).then(function(r2){if(r2!==null&&r2!==false){u2.pay_basis=emp.pay_basis;for(var i=0;i<employees.length;i++){if(employees[i].id===emp.id){employees[i]=Object.assign({},employees[i],u2,{id:emp.id});break;}}closeModal("empModal");renderEmployees();renderDashboard();resetForm();showToast("✓ Updated (add pay_basis column to Supabase)");}else showToast("Update failed: "+(window._sbLastError||"unknown"),true);});}
     });
   } else {
-    var empPost={name:emp.name,role:emp.role,phone:emp.phone||null,wage:emp.wage,pay_basis:emp.pay_basis||"DAILY",password:emp.password||"emp123",photo:emp.photo||null,shop_id:currentShop?currentShop.id:null,extra_data:{email:emp.email||null,dept:emp.dept||null,join_date:emp.join_date||null,address:emp.address||null,cl_quota:emp.cl_quota||12,sl_quota:emp.sl_quota||6}};
+    var empPost={name:emp.name,role:emp.role,phone:emp.phone||null,wage:emp.wage,pay_basis:emp.pay_basis||"DAILY",password:emp.password||"emp123",photo:emp.photo||null,shop_id:currentShop?currentShop.id:null};
     sb("employees","POST",empPost).then(function(res){
       if(res&&res[0]){employees.push(res[0]);closeModal("empModal");renderEmployees();renderDashboard();addAuditLog("➕","Employee Added","Added "+emp.name+" ("+emp.id+")","var(--green)");showToast("✓ "+emp.name+" added!");resetForm();}
       else{var empSafe=Object.assign({},emp);delete empSafe.pay_basis;sb("employees","POST",empSafe).then(function(res2){if(res2&&res2[0]){employees.push(Object.assign({},res2[0],{pay_basis:emp.pay_basis}));closeModal("empModal");renderEmployees();renderDashboard();showToast("✓ Added! (add pay_basis column for full support)");resetForm();}else showToast("Failed — check ID is unique",true);});}
