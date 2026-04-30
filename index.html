@@ -2926,6 +2926,30 @@ td{border-color:var(--bdr)!important;color:var(--t1)!important;}
 .wa-sum-val{font-family:var(--font-head);font-size:.85rem;font-weight:800;color:var(--t1);}
 .wa-sum-lbl{font-size:.46rem;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-top:2px;}
 
+
+/* === EMPLOYEE PROFILE PAGE === */
+.emp-profile-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:1000;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;}
+.emp-profile-overlay.show{display:flex;}
+.emp-profile-card{background:var(--bg);max-width:500px;width:92%;border-radius:18px;box-shadow:0 10px 40px rgba(0,0,0,0.3);overflow:hidden;margin:auto;}
+.epc-header{background:linear-gradient(135deg,var(--accent),var(--orange));padding:24px 20px;text-align:center;color:#fff;position:relative;}
+.epc-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:1.2rem;cursor:pointer;}
+.epc-photo{width:88px;height:88px;border-radius:50%;background:rgba(255,255,255,0.2);margin:0 auto 12px;overflow:hidden;border:3px solid #fff;}
+.epc-photo img{width:100%;height:100%;object-fit:cover;}
+.epc-photo-placeholder{display:flex;align-items:center;justify-content:center;font-size:2.5rem;height:100%;}
+.epc-name{font-family:var(--font-head);font-size:1.3rem;font-weight:800;margin-bottom:3px;}
+.epc-role{font-size:0.78rem;opacity:0.9;}
+.epc-empcode{display:inline-block;background:rgba(255,255,255,0.25);padding:3px 10px;border-radius:10px;font-size:0.65rem;font-weight:700;margin-top:8px;letter-spacing:0.05em;}
+.epc-section{padding:18px 20px;border-bottom:1px solid var(--border);}
+.epc-section-title{font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:14px;}
+.epc-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:0.78rem;}
+.epc-row-label{color:var(--text3);font-weight:600;}
+.epc-row-value{color:var(--text);font-weight:700;font-family:var(--font-data);text-align:right;max-width:60%;word-break:break-word;}
+.epc-row-empty{color:var(--text3);font-style:italic;}
+.epc-actions{display:flex;gap:10px;padding:16px 20px;background:var(--bg-card2);}
+.epc-action-btn{flex:1;padding:12px;border-radius:10px;border:none;font-size:0.78rem;font-weight:700;cursor:pointer;}
+.epc-edit-btn{background:linear-gradient(145deg,var(--accent),var(--orange));color:#fff;}
+.epc-print-btn{background:var(--bg);color:var(--text);border:1px solid var(--border);}
+
 </style>
 </head>
 <body>
@@ -6739,7 +6763,7 @@ function renderEmployees(){
     h+="<div class='emp-role' style='color:var(--green)'>₹"+e.wage+(e.pay_basis==="MONTHLY"?"/month 🗓":"/day 📅")+" · "+esc(e.dept||"—")+"</div>";
     if(e.phone)h+="<div class='emp-role'>📞 "+esc(e.phone)+"</div>";
     h+="</div><div style='display:flex;gap:6px;margin-top:6px;flex-wrap:wrap'>";
-    h+="<button onclick=\"openEditEmp('"+esc(e.id)+"')\" style='background:rgba(240,180,41,0.1);color:var(--accent);border:1px solid rgba(240,180,41,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer'>✏ Edit</button>";
+    h+="<button onclick=\"openEmpProfile('"+esc(e.id)+"')\" style='background:rgba(91,168,245,0.1);color:#5BA8F5;border:1px solid rgba(91,168,245,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer;margin-right:6px'>👁 View</button><button onclick=\"openEditEmp('"+esc(e.id)+"')\" style='background:rgba(240,180,41,0.1);color:var(--accent);border:1px solid rgba(240,180,41,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer'>✏ Edit</button>";
     h+="<button onclick=\"openOpeningBalModal('"+esc(e.id)+"','"+esc(e.name).replace(/'/g,"\\'")+"')\" style='background:rgba(91,168,245,0.1);color:var(--blue);border:1px solid rgba(91,168,245,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer'>📂 Balance</button>";
     h+="<button onclick=\"deleteEmpPrompt('"+esc(e.id)+"','"+esc(e.name).replace(/'/g,"\\'")+"')\" style='background:var(--red-dim);color:var(--red);border:1px solid rgba(241,107,107,0.2);padding:7px 10px;border-radius:10px;font-size:0.7rem;font-weight:700;cursor:pointer'>🗑</button>";
     h+="</div></div>";
@@ -6834,7 +6858,7 @@ function saveEmployee(){
   }
   function resetForm(){["f-empId","f-empName","f-empEmail","f-empPhone","f-empWage","f-empRoleCustom","f-empDeptCustom","f-empPw"].forEach(function(f){document.getElementById(f).value="";});dpSetValue("f-empJoin","");document.getElementById("f-empPhoto").value="";document.getElementById("photo-preview").style.display="none";document.getElementById("photo-placeholder").style.display="block";document.getElementById("f-empRole").value="";document.getElementById("f-empDept").value="";document.getElementById("f-empCL").value="12";document.getElementById("f-empSL").value="6";setPayBasis("DAILY");["phone-hint","email-hint","wage-hint"].forEach(function(id){document.getElementById(id).style.display="none";});document.getElementById("empId-regen-btn").style.display="";document.getElementById("f-empMode").value="add";document.getElementById("empModal-title").innerHTML="Add <span>Employee</span>";document.getElementById("empModal-save-btn").textContent="Save Employee";}
   if(mode==="edit"){
-    var updates={name:emp.name,role:emp.role,email:emp.email||null,phone:emp.phone||null,wage:emp.wage,dept:emp.dept||null,join_date:emp.join_date||null,pay_basis:emp.pay_basis||"DAILY",password:emp.password};
+    var updates={name:emp.name,role:emp.role,email:emp.email||null,phone:emp.phone||null,wage:emp.wage,dept:emp.dept||null,join_date:emp.join_date||null,address:emp.address||null,pay_basis:emp.pay_basis||"DAILY",password:emp.password,cl_quota:emp.cl_quota||12,sl_quota:emp.sl_quota||6};
     if(emp.photo)updates.photo=emp.photo;
     updates.pay_basis=emp.pay_basis||"DAILY";
     sb("employees","PATCH",updates,"?id=eq."+(document.getElementById("f-empDbId")&&document.getElementById("f-empDbId").value?document.getElementById("f-empDbId").value:emp.id)).then(function(r){
@@ -6842,7 +6866,7 @@ function saveEmployee(){
       else{var u2=Object.assign({},updates);delete u2.pay_basis;sb("employees","PATCH",u2,"?id=eq."+emp.id).then(function(r2){if(r2!==null&&r2!==false){u2.pay_basis=emp.pay_basis;for(var i=0;i<employees.length;i++){if(employees[i].id===emp.id){employees[i]=Object.assign({},employees[i],u2,{id:emp.id});break;}}closeModal("empModal");renderEmployees();renderDashboard();resetForm();showToast("✓ Updated (add pay_basis column to Supabase)");}else showToast("Update failed: "+(window._sbLastError||"unknown"),true);});}
     });
   } else {
-    var empPost={name:emp.name,role:emp.role,email:emp.email||null,phone:emp.phone||null,wage:emp.wage,pay_basis:emp.pay_basis||"DAILY",password:emp.password||"emp123",photo:emp.photo||null,dept:emp.dept||null,join_date:emp.join_date||null,shop_id:currentShop?currentShop.id:null};
+    var empPost={name:emp.name,role:emp.role,email:emp.email||null,phone:emp.phone||null,wage:emp.wage,pay_basis:emp.pay_basis||"DAILY",password:emp.password||"emp123",photo:emp.photo||null,dept:emp.dept||null,join_date:emp.join_date||null,address:emp.address||null,cl_quota:emp.cl_quota||12,sl_quota:emp.sl_quota||6,shop_id:currentShop?currentShop.id:null};
     sb("employees","POST",empPost).then(function(res){
       if(res&&res[0]){employees.push(res[0]);closeModal("empModal");renderEmployees();renderDashboard();addAuditLog("➕","Employee Added","Added "+emp.name+" ("+emp.id+")","var(--green)");showToast("✓ "+emp.name+" added!");resetForm();}
       else{var empSafe=Object.assign({},emp);delete empSafe.pay_basis;sb("employees","POST",empSafe).then(function(res2){if(res2&&res2[0]){employees.push(Object.assign({},res2[0],{pay_basis:emp.pay_basis}));closeModal("empModal");renderEmployees();renderDashboard();showToast("✓ Added! (add pay_basis column for full support)");resetForm();}else showToast("Failed — check ID is unique",true);});}
@@ -14796,6 +14820,132 @@ if (document.readyState !== 'loading') { setTimeout(applyCompanyToUI, 400); }
 document.addEventListener('DOMContentLoaded', function(){ setTimeout(applyCompanyToUI, 400); });
 
 console.log('\u2699\ufe0f Company Settings v1.0 loaded \u2014 tap \u2699 Settings in the top bar.');
+
+
+
+// === EMPLOYEE PROFILE PAGE ===
+function openEmpProfile(empId){
+  var emp = employees.find(function(e){return e.id===empId;});
+  if(!emp){ showToast("Employee not found",true); return; }
+  
+  var overlay = document.getElementById('emp-profile-overlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'emp-profile-overlay';
+    overlay.className = 'emp-profile-overlay';
+    overlay.onclick = function(e){ if(e.target===overlay) closeEmpProfile(); };
+    document.body.appendChild(overlay);
+  }
+  
+  var simpId = emp.emp_code || ("EMP-" + String(employees.indexOf(emp)+1).padStart(3,"0"));
+  var photoHtml = emp.photo 
+    ? '<img src="'+emp.photo+'" alt="">'
+    : '<div class="epc-photo-placeholder">👤</div>';
+  
+  function row(label, value, isEmpty){
+    return '<div class="epc-row"><span class="epc-row-label">'+label+'</span>'+
+      '<span class="epc-row-value '+(isEmpty?'epc-row-empty':'')+'">'+(value||'Not set')+'</span></div>';
+  }
+  
+  var attCount = 0, totalDays = 0;
+  try {
+    Object.keys(attStatus||{}).forEach(function(k){
+      if(k.indexOf(emp.id)>=0){
+        totalDays++;
+        if(attStatus[k]==='P') attCount++;
+      }
+    });
+  } catch(e){}
+  
+  var totalSal = 0, paidSal = 0;
+  try {
+    (payments||[]).forEach(function(p){
+      if(p.emp_id===emp.id){
+        totalSal += (p.gross_sal||0);
+        paidSal += (p.amount_paid||0);
+      }
+    });
+  } catch(e){}
+  
+  var html = '<div class="emp-profile-card">'+
+    '<div class="epc-header">'+
+      '<button class="epc-close" onclick="closeEmpProfile()">×</button>'+
+      '<div class="epc-photo">'+photoHtml+'</div>'+
+      '<div class="epc-name">'+(emp.name||'Unnamed')+'</div>'+
+      '<div class="epc-role">'+(emp.role||'Staff')+'</div>'+
+      '<div class="epc-empcode">'+simpId+'</div>'+
+    '</div>'+
+    
+    '<div class="epc-section">'+
+      '<div class="epc-section-title">📋 Personal Information</div>'+
+      row('Full Name', emp.name)+
+      row('Phone', emp.phone, !emp.phone)+
+      row('Email', emp.email, !emp.email)+
+      row('Address', emp.address, !emp.address)+
+    '</div>'+
+    
+    '<div class="epc-section">'+
+      '<div class="epc-section-title">💼 Work Details</div>'+
+      row('Employee ID', simpId)+
+      row('Role', emp.role)+
+      row('Department', emp.dept, !emp.dept)+
+      row('Join Date', emp.join_date ? new Date(emp.join_date).toLocaleDateString('en-IN') : null, !emp.join_date)+
+      row('Pay Basis', emp.pay_basis||'Daily')+
+      row('Wage', '₹'+(emp.wage||0).toLocaleString('en-IN')+(emp.pay_basis==='MONTHLY'?'/month':'/day'))+
+    '</div>'+
+    
+    '<div class="epc-section">'+
+      '<div class="epc-section-title">🏖 Leave Balance</div>'+
+      row('Casual Leave Quota', (emp.cl_quota||12)+' days/year')+
+      row('Sick Leave Quota', (emp.sl_quota||6)+' days/year')+
+    '</div>'+
+    
+    '<div class="epc-section">'+
+      '<div class="epc-section-title">📊 This Month Summary</div>'+
+      row('Days Present', attCount+' / '+totalDays)+
+      row('Total Salary Earned', '₹'+totalSal.toLocaleString('en-IN'))+
+      row('Total Paid', '₹'+paidSal.toLocaleString('en-IN'))+
+      row('Outstanding', '₹'+(totalSal-paidSal).toLocaleString('en-IN'))+
+    '</div>'+
+    
+    '<div class="epc-actions">'+
+      '<button class="epc-action-btn epc-print-btn" onclick="printEmpProfile(\''+emp.id+'\')">🖨 Print</button>'+
+      '<button class="epc-action-btn epc-edit-btn" onclick="closeEmpProfile();openEditEmp(\''+emp.id+'\')">✏ Edit</button>'+
+    '</div>'+
+  '</div>';
+  
+  overlay.innerHTML = html;
+  overlay.classList.add('show');
+}
+
+function closeEmpProfile(){
+  var overlay = document.getElementById('emp-profile-overlay');
+  if(overlay) overlay.classList.remove('show');
+}
+
+function printEmpProfile(empId){
+  var emp = employees.find(function(e){return e.id===empId;});
+  if(!emp) return;
+  var simpId = emp.emp_code || ("EMP-" + String(employees.indexOf(emp)+1).padStart(3,"0"));
+  var w = window.open('', '_blank');
+  w.document.write('<html><head><title>Employee Profile - '+emp.name+'</title>'+
+    '<style>body{font-family:Arial;padding:30px;color:#333}h1{color:#E67E22;border-bottom:2px solid #E67E22;padding-bottom:10px}'+
+    '.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee}.row b{color:#666}'+
+    'h3{color:#E67E22;margin-top:25px;margin-bottom:5px}</style></head><body>'+
+    '<h1>'+emp.name+' - '+simpId+'</h1>'+
+    '<h3>Personal Information</h3>'+
+    '<div class="row"><b>Phone:</b><span>'+(emp.phone||'-')+'</span></div>'+
+    '<div class="row"><b>Email:</b><span>'+(emp.email||'-')+'</span></div>'+
+    '<div class="row"><b>Address:</b><span>'+(emp.address||'-')+'</span></div>'+
+    '<h3>Work Details</h3>'+
+    '<div class="row"><b>Role:</b><span>'+(emp.role||'-')+'</span></div>'+
+    '<div class="row"><b>Department:</b><span>'+(emp.dept||'-')+'</span></div>'+
+    '<div class="row"><b>Join Date:</b><span>'+(emp.join_date||'-')+'</span></div>'+
+    '<div class="row"><b>Wage:</b><span>₹'+(emp.wage||0)+' '+(emp.pay_basis||'DAILY')+'</span></div>'+
+    '</body></html>');
+  w.document.close();
+  w.print();
+}
 
 </script>
 
